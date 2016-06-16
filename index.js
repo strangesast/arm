@@ -1,37 +1,40 @@
 mainCanvas = document.getElementById('canvas');
 mainCanvas.width = 1000;
 mainCanvas.height = 600;
+
 const WIDTH = mainCanvas.width;
 const HEIGHT = mainCanvas.height;
 const LENGTHA = 130;
 const LENGTHB = 174;
-var x;
-var y;
-
 const centerX = Math.min(WIDTH/2,HEIGHT/2);
 const centerY = HEIGHT/2;
 
+var x;
+var y;
 var lastr1 = 0;
 var lastr2 = 0;
 
 var lena = function(ar) {
   return Math.sqrt(ar.map((el)=>Math.pow(el,2)).reduce((a,b)=>a+b));
-}
+};
 var len = function() {
   return lena(Array.prototype.slice.call(arguments,0));
-}
+};
 var diff = function(a, b) {
   return a.map((el,i)=>el-b[i]);
-}
+};
 var plus = function(a, b) {
   return a.map((el, i)=>el+b[i]);
-}
+};
 var angle = function(a, b) {
   return +(Math.acos((a[0]*b[0]+a[1]*b[1]) / (len(a[0], a[1])*len(b[0], b[1])))*180/Math.PI) || 0;
-}
+};
 var below = function(val, thr) {
   return Math.abs(val) < thr ? true : false;
-}
+};
+var mmag = function(a, b) {
+  return Math.abs(a) < Math.abs(b) ? a : b;
+};
 
 // initialized with target, may also send new target
 // end on reaching target
@@ -63,16 +66,18 @@ var controller = function* (target) {
       ta = goal[2]; // target alpha
       tb = goal[3]; // target beta
 
-      ar1 = (ta-r1)/100;
+      let d1 = mmag(ta-r1,ta-r1+360);
+      ar1 = d1/100;
       ar1 = Math.abs(ar1) > 0.001 ? ar1 : 0;
       ar1 = Math.max(Math.min(ar1,0.1),-0.1);
 
-      vr1 += ar1
-      vr1 *= 0.85
+      vr1 += ar1;
+      vr1 *= 0.85;
 
       r1 += vr1;
 
-      ar2 = (tb-r2)/100;
+      let d2 = mmag(tb-r2,tb-r2+360);
+      ar2 = d2/100;
       ar2 = Math.abs(ar2) > 0.001 ? ar2 : 0;
       ar2 = Math.max(Math.min(ar2,0.1),-0.1);
 
@@ -82,12 +87,14 @@ var controller = function* (target) {
       r2 += vr2;
 
       b = (v)=>below(v,0.001);
-      if([ta-r1,tb-r2,vr1,vr2].every(b)){
+
+      // no accleration, no velocity -> quit
+      if([ar1,ar2,vr1,vr2].every(b)){
         break;
       }
     }
   }
-}
+};
 
 var calc = function(B, a, b) {
   var dx = B[0];
@@ -106,7 +113,7 @@ var calc = function(B, a, b) {
     [dx*l, dy*l],
     alpha,
     beta
-  ]
+  ];
 };
 
 var set = function(alpha, beta, a, b) {
@@ -115,7 +122,7 @@ var set = function(alpha, beta, a, b) {
   var dx2 = Math.cos(beta)*b+dx1;
   var dy2 = Math.sin(beta)*b+dy1;
   return [[dx1, dy1], [dx2, dy2]];
-}
+};
 
 var stroke = function(ctx, images) {
   var args = Array.prototype.slice.call(arguments,2);
@@ -138,6 +145,29 @@ var stroke = function(ctx, images) {
     ctx.stroke();
     ctx.restore();
   }
+};
+
+var angles = function(ctx) {
+  var args = Array.prototype.slice.call(arguments,1);
+  var lang = 0;
+  for(var i=1; i < args.length; i+=2) {
+    ctx.save();
+    let pnt = args[i-1]; // angle
+    let ang = args[i];
+    ctx.translate(pnt[0], pnt[1]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 40, 0, ang);
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.restore();
+    lang = ang;
+  }
+};
+
+var drawText = function(ctx, text, x0, y0) {
+  ctx.font = "20px serif";
+  ctx.fillStyle = 'black';
+  ctx.fillText(String(text), x0, y0);
 };
 
 var loadImages = function(urls) {
@@ -189,11 +219,15 @@ var loadImages = function(urls) {
           val = n.value;
           var points = set(val[0], val[1], LENGTHA, LENGTHB);
           ctx.clearRect(0, 0, WIDTH, HEIGHT);
+          drawText(ctx, Math.round(val[0]*180/Math.PI), 0, 20);
+          drawText(ctx, Math.round((Math.PI-val[1]+val[0])*180/Math.PI), 0, 40);
+
           ctx.beginPath();
           var one = [centerX, centerY];
           var two = plus(one,points[0]);
           var three=plus(one,points[1]);
           stroke(ctx, images, one, two, three);
+          angles(ctx, one, val[0], two, val[1], three);
           ctx.beginPath();
           ctx.fillStyle = 'yellow';
           ctx.arc(x, y, 6, 0, Math.PI*2);

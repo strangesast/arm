@@ -66,7 +66,7 @@ var controller = function* (target) {
       ta = goal[2]; // target alpha
       tb = goal[3]; // target beta
 
-      let d1 = mmag(ta-r1,ta-r1+360);
+      let d1 = mmag(ta-r1,ta+2*Math.PI - r1);
       ar1 = d1/100;
       ar1 = Math.abs(ar1) > 0.001 ? ar1 : 0;
       ar1 = Math.max(Math.min(ar1,0.1),-0.1);
@@ -74,9 +74,9 @@ var controller = function* (target) {
       vr1 += ar1;
       vr1 *= 0.85;
 
-      r1 += vr1;
+      r1 = (r1 + vr1) % (2*Math.PI);
 
-      let d2 = mmag(tb-r2,tb-r2+360);
+      let d2 = mmag(tb-r2,tb+2*Math.PI - r2);
       ar2 = d2/100;
       ar2 = Math.abs(ar2) > 0.001 ? ar2 : 0;
       ar2 = Math.max(Math.min(ar2,0.1),-0.1);
@@ -84,7 +84,7 @@ var controller = function* (target) {
       vr2 += ar2;
       vr2 *= 0.85
 
-      r2 += vr2;
+      r2 = (r2 + vr2) % (2*Math.PI);
 
       b = (v)=>below(v,0.001);
 
@@ -92,6 +92,8 @@ var controller = function* (target) {
       if([ar1,ar2,vr1,vr2].every(b)){
         break;
       }
+    } else {
+      break;
     }
   }
 };
@@ -108,7 +110,7 @@ var calc = function(B, a, b) {
   var alpha = Math.atan2(dyr, dxr);
   var beta = Math.atan2(dy*l-dyr, dx*l-dxr);
 
-  return [
+  return (c < b - a) || (a + b < c) ? null : [
     [dxr, dyr],
     [dx*l, dy*l],
     alpha,
@@ -193,7 +195,7 @@ var loadImages = function(urls) {
   var activeController = null; // generator
   var ctx = canvasElement.getContext('2d');
   var frameRequest; // control framerate / cancels
-  var val; // last mouse position
+  var val=[lastr1,lastr2]; // last mouse position
   var images = [null, null];  // lazy load image data
   loadImages(['/img/arm2.png', '/img/arm3.png']).then(function(imgs) {
     images = imgs;
@@ -219,8 +221,20 @@ var loadImages = function(urls) {
           val = n.value;
           var points = set(val[0], val[1], LENGTHA, LENGTHB);
           ctx.clearRect(0, 0, WIDTH, HEIGHT);
+          ctx.save();
+          ctx.beginPath();
+          // 3rd param will be wrong if lena and lenb mag changes
+          ctx.arc(centerX, centerY, LENGTHB+LENGTHA, 0, Math.PI*2);
+          ctx.rect(WIDTH, 0, -WIDTH, HEIGHT);
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, LENGTHB-LENGTHA, 0, Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+          //ctx.arc(centerX, centerY, LENGTHB-LENGTHA, 0, -Math.PI*2);
           drawText(ctx, Math.round(val[0]*180/Math.PI), 0, 20);
-          drawText(ctx, Math.round((Math.PI-val[1]+val[0])*180/Math.PI), 0, 40);
+          drawText(ctx, Math.round(val[1]*180/Math.PI), 0, 40);
 
           ctx.beginPath();
           var one = [centerX, centerY];

@@ -35,11 +35,18 @@ var below = function(val, thr) {
 var mmag = function(a, b) {
   return Math.abs(a) < Math.abs(b) ? a : b;
 };
+var absmin = function(val, max) {
+  return Math.sign(val)*Math.min(Math.abs(val), max);
+};
 
 // initialized with target, may also send new target
 // end on reaching target
-var controller = function* (target) {
+var controller = function* (target, mon1, mon2) {
   var goal = null;
+  var damp = function(d, v) {
+    var r = 0.85;
+    return r;
+  };
 
   // displacement
   var r1 = lastr1;
@@ -60,31 +67,43 @@ var controller = function* (target) {
   while(true) {
     val = yield [r1,r2];
     if(val !== undefined) {
-      var goal = calc([val[0]-centerX, val[1]-centerY], LENGTHA, LENGTHB); // for intermediate angle calc
+      goal = calc([val[0]-centerX, val[1]-centerY], LENGTHA, LENGTHB) || goal; // for intermediate angle calc
     }
     if(goal !== null) {
       ta = goal[2]; // target alpha
       tb = goal[3]; // target beta
 
-      let d1 = mmag(ta-r1,ta+2*Math.PI - r1);
-      ar1 = d1/100;
+      // limit acceleration
+      let d1 = mmag(ta-r1,ta+2*Math.PI-r1);
+      ar1 = absmin(d1/100, 0.01);
       ar1 = Math.abs(ar1) > 0.001 ? ar1 : 0;
       ar1 = Math.max(Math.min(ar1,0.1),-0.1);
 
-      vr1 += ar1;
-      vr1 *= 0.85;
+      vr1 = vr1 + ar1;
+      vr1 *= damp(d1, vr1);
+
 
       r1 = (r1 + vr1) % (2*Math.PI);
 
-      let d2 = mmag(tb-r2,tb+2*Math.PI - r2);
-      ar2 = d2/100;
+      if(mon1) {
+        mon1.addpt(vr1);
+        mon1.update();
+      }
+
+      let d2 = mmag(tb-r2,tb+2*Math.PI-r2);
+      ar2 = absmin(d2/100, 0.01);
       ar2 = Math.abs(ar2) > 0.001 ? ar2 : 0;
       ar2 = Math.max(Math.min(ar2,0.1),-0.1);
 
-      vr2 += ar2;
-      vr2 *= 0.85
+      vr2 = vr2 + ar2;
+      vr2 *= damp(d2, vr2);
 
       r2 = (r2 + vr2) % (2*Math.PI);
+
+      if(mon2) {
+        mon2.addpt(vr2);
+        mon2.update();
+      }
 
       b = (v)=>below(v,0.001);
 
@@ -263,7 +282,7 @@ var loadImages = function(urls) {
     y = e.clientY;
 
     if(activeController === null) {
-      activeController = controller([x, y]);
+      activeController = controller([x, y], monit1, monit2);
       activeController.next();
       activeController.next([x, y]);
     } else {
@@ -277,6 +296,7 @@ var loadImages = function(urls) {
 })(mainCanvas);
 
 var monitor = function() {
+  var data = [];
   var canvas = document.createElement('canvas');
   var width = 300;
   var height = 300;
@@ -285,16 +305,34 @@ var monitor = function() {
   var ctx = canvas.getContext('2d');
   mainCanvas.parentElement.appendChild(canvas);
 
-  var updateGraph = function(data) {
+
+  var updateGraph = function() {
+    if(data.length < 2) {
+      return;
+    }
+    max = Math.max.apply(null,data);
+    min = Math.min.apply(null,data);
+
     ctx.clearRect(0, 0, width, height);
     ctx.beginPath();
-    ctx.moveTo(data[0][0],data[0][1]);
+    ctx.moveTo(0,(data[0]-min)/(max-min)*height);
     for(var i=0; i < data.length; i++){
-      ctx.lineTo(data[i][0],data[i][1]);
+      let x0 = data[i];
+      ctx.lineTo(i/data.length*width, (x0-min)/(max-min)*height);
     }
-    ctx.stroke()
+    ctx.stroke();
+    console.log(data);
   };
+  var addpt = function(pt) {
+    data.push(pt);
+    data = data.slice(-100);
+  }
   return {
-    update: updateGraph
+    update: updateGraph,
+    addpt: addpt
   }
 };
+
+
+var monit1 = monitor();
+var monit2 = monitor();

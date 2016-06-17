@@ -9,6 +9,8 @@ const LENGTHB = 174;
 const centerX = Math.min(WIDTH/2,HEIGHT/2);
 const centerY = HEIGHT/2;
 
+var hoverpos = [0, 0]
+
 var x;
 var y;
 var lastr1 = 0;
@@ -246,6 +248,7 @@ var loadImages = function(urls) {
           ctx.save();
           ctx.beginPath();
           // 3rd param will be wrong if lena and lenb mag changes
+          // red area
           ctx.arc(centerX, centerY, LENGTHB+LENGTHA, 0, Math.PI*2);
           ctx.rect(WIDTH, 0, -WIDTH, HEIGHT);
           ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
@@ -254,17 +257,20 @@ var loadImages = function(urls) {
           ctx.arc(centerX, centerY, LENGTHB-LENGTHA, 0, Math.PI*2);
           ctx.fill();
           ctx.restore();
-          //ctx.arc(centerX, centerY, LENGTHB-LENGTHA, 0, -Math.PI*2);
-          drawText(ctx, Math.round(val[0]*180/Math.PI), 0, 20);
-          drawText(ctx, Math.round(val[1]*180/Math.PI), 0, 40);
+          // angles
+          //drawText(ctx, Math.round(val[0]*180/Math.PI), 0, 20);
+          //drawText(ctx, Math.round(val[1]*180/Math.PI), 0, 40);
 
+          // imgs
           ctx.beginPath();
           var one = [centerX, centerY];
           var two = plus(one,points[0]);
           var three=plus(one,points[1]);
-          var four =plus(three,norm(plus(one,[400,0]),one).map((el)=>el*200));
+          //var four =plus(three,norm(plus(one,[400,0]),one).map((el)=>el*200));
+          var four =plus(three,norm(hoverpos,three).map((el)=>el*200));
           stroke(ctx, images, one, two, three, four);
-          angles(ctx, one, val[0], two, val[1], three);
+          //angles(ctx, one, val[0], two, val[1], three);
+          // mouse dot
           ctx.beginPath();
           ctx.fillStyle = 'yellow';
           ctx.arc(x, y, 6, 0, Math.PI*2);
@@ -281,7 +287,7 @@ var loadImages = function(urls) {
     frameRequest = null;
   }
 
-  canvasElement.addEventListener('mousedown', function(e) {
+  canvasElement.addEventListener('click', function(e) {
     x = e.clientX;
     y = e.clientY;
 
@@ -296,6 +302,9 @@ var loadImages = function(urls) {
     if(frameRequest === null) {
       drawFrame();
     }
+  });
+  canvasElement.addEventListener('dblclick',function(e) {
+    hoverpos = [e.clientX, e.clientY];
   });
 })(mainCanvas);
 

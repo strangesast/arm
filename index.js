@@ -32,6 +32,10 @@ var angle = function(a, b) {
 var below = function(val, thr) {
   return Math.abs(val) < thr ? true : false;
 };
+var norm = function(a, b) {
+  let d = diff(a, b);
+  return d.map((el)=>el/lena(d))
+};
 var mmag = function(a, b) {
   return Math.abs(a) < Math.abs(b) ? a : b;
 };
@@ -49,8 +53,8 @@ var controller = function* (target, mon1, mon2) {
   };
 
   // displacement
-  var r1 = lastr1;
-  var r2 = lastr2;
+  r1 = lastr1;
+  r2 = lastr2;
 
   // velocity
   var vr1 = 0;
@@ -86,7 +90,7 @@ var controller = function* (target, mon1, mon2) {
       r1 = (r1 + vr1) % (2*Math.PI);
 
       if(mon1) {
-        mon1.addpt(vr1);
+        mon1.addpt(r1);
         mon1.update();
       }
 
@@ -101,7 +105,7 @@ var controller = function* (target, mon1, mon2) {
       r2 = (r2 + vr2) % (2*Math.PI);
 
       if(mon2) {
-        mon2.addpt(vr2);
+        mon2.addpt(Math.PI-r2+r1);
         mon2.update();
       }
 
@@ -147,24 +151,23 @@ var set = function(alpha, beta, a, b) {
 
 var stroke = function(ctx, images) {
   var args = Array.prototype.slice.call(arguments,2);
-  if(images.every((el)=>el!==null)){
-    images.forEach(function(img,i) {
+  for(var i=1,pt1,pt2;pt1=args[i-1],pt2=args[i],i<args.length;i++){
+    if(i-1 < images.length && images[i-1] !== null) {
+      let img = images[i-1];
       ctx.save();
-      ctx.translate(args[i][0],args[i][1]);
-      ctx.rotate(-Math.atan2(args[i+1][0]-args[i][0],args[i+1][1]-args[i][1]));
+      ctx.translate(pt1[0],pt1[1]);
+      ctx.rotate(-Math.atan2(pt2[0]-pt1[0],pt2[1]-pt1[1]));
       ctx.scale(0.75, 0.75);
       ctx.drawImage(img, -img.width/2, -18);
       ctx.restore();
-    });
-  } else {
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(args[0][0], args[0][1]);
-    for(var i=1,pnt; pnt=args[i],i < args.length; i++) {
-      ctx.lineTo(pnt[0],pnt[1]);
+    } else {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pt1[0],pt1[1]);
+      ctx.lineTo(pt2[0],pt2[1]);
+      ctx.stroke();
+      ctx.restore();
     }
-    ctx.stroke();
-    ctx.restore();
   }
 };
 
@@ -215,8 +218,8 @@ var loadImages = function(urls) {
   var ctx = canvasElement.getContext('2d');
   var frameRequest; // control framerate / cancels
   var val=[lastr1,lastr2]; // last mouse position
-  var images = [null, null];  // lazy load image data
-  loadImages(['/img/arm2.png', '/img/arm3.png']).then(function(imgs) {
+  var images = [null, null, null];  // lazy load image data
+  loadImages(['/img/arm2.png', '/img/arm3.png', '/img/arm4.png']).then(function(imgs) {
     images = imgs;
   });
   var drawFrame = function(time) {
@@ -259,7 +262,8 @@ var loadImages = function(urls) {
           var one = [centerX, centerY];
           var two = plus(one,points[0]);
           var three=plus(one,points[1]);
-          stroke(ctx, images, one, two, three);
+          var four =plus(three,norm(plus(one,[400,0]),one).map((el)=>el*200));
+          stroke(ctx, images, one, two, three, four);
           angles(ctx, one, val[0], two, val[1], three);
           ctx.beginPath();
           ctx.fillStyle = 'yellow';
@@ -321,7 +325,6 @@ var monitor = function() {
       ctx.lineTo(i/data.length*width, (x0-min)/(max-min)*height);
     }
     ctx.stroke();
-    console.log(data);
   };
   var addpt = function(pt) {
     data.push(pt);
@@ -332,7 +335,6 @@ var monitor = function() {
     addpt: addpt
   }
 };
-
 
 var monit1 = monitor();
 var monit2 = monitor();

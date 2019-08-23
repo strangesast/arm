@@ -221,7 +221,7 @@ var loadImages = function(urls) {
   var frameRequest; // control framerate / cancels
   var val=[lastr1,lastr2]; // last mouse position
   var images = [null, null, null];  // lazy load image data
-  loadImages(['/img/arm2.png', '/img/arm3.png', '/img/arm4.png']).then(function(imgs) {
+  loadImages(['./img/arm2.png', './img/arm3.png', './img/arm4.png']).then(function(imgs) {
     images = imgs;
   });
   var drawFrame = function(time) {

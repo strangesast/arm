@@ -287,6 +287,13 @@ var loadImages = function(urls) {
     frameRequest = null;
   }
 
+  canvasElement.addEventListener('click', () => {
+    const el = document.querySelector('p');
+    if (el != null) {
+      el.parentElement.removeChild(el);
+    }
+  }, {once: true});
+
   canvasElement.addEventListener('click', function(e) {
     x = e.clientX;
     y = e.clientY;
